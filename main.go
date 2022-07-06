@@ -4,10 +4,12 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/ddvk/rmapi-hwr/hwr"
@@ -15,25 +17,41 @@ import (
 	"github.com/juruen/rmapi/encoding/rm"
 )
 
-func loadRmPage(filename string) (zip *archive.Zip, err error) {
+func find(root, ext string) []string {
+	var a []string
+	filepath.WalkDir(root, func(s string, d fs.DirEntry, e error) error {
+		if e != nil {
+			return e
+		}
+		if filepath.Ext(d.Name()) == ext {
+			a = append(a, s)
+		}
+		return nil
+	})
+	return a
+}
+
+func loadRmFolder(folderPath string) (zip *archive.Zip, err error) {
 	zip = archive.NewZip()
-	file, err := os.Open(filename)
-	defer file.Close()
 
-	pageData, err := ioutil.ReadAll(file)
+	for _, s := range find(folderPath, ".rm") {
+		file, err := os.Open(s)
+		defer file.Close()
 
-	if err != nil {
-		log.Fatal("cant read fil")
-		return
+		pageData, err := ioutil.ReadAll(file)
+
+		if err != nil {
+			log.Fatal("cant read fil")
+			continue
+		}
+		page := archive.Page{}
+		page.Data = rm.New()
+		page.Data.UnmarshalBinary(pageData)
+
+		zip.Pages = append(zip.Pages, page)
 	}
-	page := archive.Page{}
-	page.Data = rm.New()
-	page.Data.UnmarshalBinary(pageData)
-
-	zip.Pages = append(zip.Pages, page)
 
 	return zip, nil
-
 }
 
 func loadRmZip(filename string) (zip *archive.Zip, err error) {
@@ -100,8 +118,11 @@ func main() {
 	switch ext {
 	case ".zip":
 		z, err = loadRmZip(filename)
-	case ".rm":
-		z, err = loadRmPage(filename)
+	/* case ".rm":
+	z, err = loadRmPage(filename) */
+	case "":
+		//it's a path
+		z, err = loadRmFolder(filename)
 	default:
 		log.Fatal("Unsupported file")
 
