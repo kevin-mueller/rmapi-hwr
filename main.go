@@ -104,6 +104,17 @@ func main() {
 
 	filename := args[0]
 	ext := path.Ext(filename)
+
+	fi, fiErr := os.Stat(filename)
+	if fiErr != nil {
+		fmt.Println(fiErr)
+		return
+	}
+
+	if fi.Mode().IsDir() {
+		ext = ""
+	}
+
 	output := strings.TrimSuffix(filename, ext)
 	cfg := hwr.Config{
 		Page:       *page,
