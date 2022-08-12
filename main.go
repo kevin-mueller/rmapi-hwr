@@ -54,6 +54,27 @@ func loadRmFolder(folderPath string) (zip *archive.Zip, err error) {
 	return zip, nil
 }
 
+func loadRmPage(filename string) (zip *archive.Zip, err error) {
+	zip = archive.NewZip()
+	file, err := os.Open(filename)
+	defer file.Close()
+
+	pageData, err := ioutil.ReadAll(file)
+
+	if err != nil {
+		log.Fatal("cant read fil")
+		return
+	}
+	page := archive.Page{}
+	page.Data = rm.New()
+	page.Data.UnmarshalBinary(pageData)
+
+	zip.Pages = append(zip.Pages, page)
+
+	return zip, nil
+
+}
+
 func loadRmZip(filename string) (zip *archive.Zip, err error) {
 	zip = archive.NewZip()
 	file, err := os.Open(filename)
@@ -129,8 +150,8 @@ func main() {
 	switch ext {
 	case ".zip":
 		z, err = loadRmZip(filename)
-	/* case ".rm":
-	z, err = loadRmPage(filename) */
+	case ".rm":
+		z, err = loadRmPage(filename)
 	case "":
 		//it's a path
 		z, err = loadRmFolder(filename)
